@@ -1,26 +1,26 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, convoKeyForRoom } from './db'
+import { db } from './db'
 import type { Nomi, Room } from './db'
-import { bumpActivity } from './convos'
-import { api } from './api'
-import { isMock } from './settings'
 
-// Create a room (SPEC §4 Rooms). In mock mode it's a local Dexie record so the
-// whole rooms UX is testable without touching the account. In live mode it hits
-// POST /rooms (payload unverified — V4) and stores the returned id.
-export async function createRoom(name: string, memberUuids: string[]): Promise<Room> {
-  let id: string
-  if (isMock()) {
-    id = `room-${crypto.randomUUID()}`
-  } else {
-    const created = await api.createRoom({ name, nomiUuids: memberUuids, backchannelingEnabled: true })
-    id = created.id ?? created.uuid ?? `room-${crypto.randomUUID()}`
+// Hardcoded rooms, seeded into Dexie because the live GET /rooms is broken (it
+// always returns []). The list renders rooms straight from Dexie (see
+// useConversations), so seeding is all that's needed to make a room appear and
+// be chatable (POST /rooms/:id/chat works fine — only the list endpoint is
+// broken).
+//
+// Insert-only: a seed is written ONLY when its id isn't already in Dexie, so the
+// hardcoded room is bootstrapped once but never clobbers edits made through the
+// Add-room form (e.g. setting members on 1924723201). memberUuids must be uuids
+// from your Nomi list (db.nomis) so avatars, the member count, and the nudge bar
+// resolve.
+const SEED_ROOMS: Room[] = [
+  { id: '1924723201', name: 'Room', memberUuids: [] }, // TODO: set name + members (or do it via [+])
+]
+
+export async function seedRooms(): Promise<void> {
+  for (const r of SEED_ROOMS) {
+    if (!(await db.rooms.get(r.id))) await db.rooms.put(r)
   }
-  const room: Room = { id, name, memberUuids }
-  await db.rooms.put(room)
-  // Surface the new room at the top of the list immediately.
-  await bumpActivity(convoKeyForRoom(id), Date.now())
-  return room
 }
 
 // Resolve a room's member uuids to their Nomi records (names + avatars), live.

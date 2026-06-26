@@ -47,7 +47,7 @@ export function Home({ onSignOut }: { onSignOut: () => void }) {
           convo={selected}
           onBack={() => setSelected(null)}
           onJump={() => setQuickOpen(true)}
-          onOpenRoom={open}
+          onOpen={open}
         />
       ) : (
         <ConversationList

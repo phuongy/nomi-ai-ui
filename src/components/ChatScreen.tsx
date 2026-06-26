@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Convo } from '../lib/convos'
+import { useConversations, type Convo } from '../lib/convos'
 import type { Room } from '../lib/db'
 import { useMessages, usePendingResponder, sendMessage, retryMessage, nudge } from '../lib/chatEngine'
 import { useRoomMembers, deleteRoom } from '../lib/rooms'
@@ -35,16 +35,43 @@ function NudgeBar({ convo, pending }: { convo: Convo; pending: boolean }) {
   )
 }
 
+// Recent-chat pills under the chat header: the 6 most-recent conversations as
+// tappable chips (avatar + name), the open one highlighted. An always-visible
+// complement to the ⇆ quick-switcher — faster for hopping between active chats,
+// while the switcher still wins for searching longer lists.
+function RecentsBar({ activeKey, onOpen }: { activeKey: string; onOpen: (c: Convo) => void }) {
+  const convos = useConversations()
+  if (!convos || convos.length === 0) return null
+  return (
+    <div className="recents">
+      {convos.slice(0, 6).map((c) => (
+        <button
+          key={c.key}
+          className={`rpill${c.key === activeKey ? ' on' : ''}`}
+          onClick={() => onOpen(c)}
+        >
+          {c.kind === 'room' ? (
+            <RoomAvatar memberUuids={c.members} size={24} />
+          ) : (
+            <Avatar uuid={c.id} name={c.name} size={24} />
+          )}
+          {c.name}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function ChatScreen({
   convo,
   onBack,
   onJump,
-  onOpenRoom,
+  onOpen,
 }: {
   convo: Convo
   onBack: () => void
   onJump: () => void
-  onOpenRoom: (c: Convo) => void
+  onOpen: (c: Convo) => void
 }) {
   const messages = useMessages(convo.key)
   const responder = usePendingResponder(convo.key)
@@ -118,6 +145,7 @@ export function ChatScreen({
             </button>
           )}
         </div>
+        <RecentsBar activeKey={convo.key} onOpen={onOpen} />
       </div>
 
       <div className="thread" ref={threadRef}>
@@ -221,7 +249,7 @@ export function ChatScreen({
           onClose={() => setEditing(false)}
           onOpenRoom={(c) => {
             setEditing(false)
-            onOpenRoom(c)
+            onOpen(c)
           }}
           onDelete={async () => {
             await deleteRoom(convo.id)

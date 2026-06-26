@@ -1,0 +1,22 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# The Hono relay runs as an Edge Function (Deno) on the same origin as the SPA.
+# Edge — not a regular Function — so the ~30s blocking /chat fits the 40s
+# response-header window (SPEC §1, V7). The function self-declares its route and
+# rate-limit via the inline `config` export in netlify/edge-functions/api.ts.
+
+# `netlify dev` runs Vite and injects the edge function at /api/* locally,
+# giving the same same-origin setup as production.
+[dev]
+  command = "npm run dev:vite"
+  targetPort = 5173
+  framework = "#custom"
+  autoLaunch = false
+
+# SPA fallback: everything that isn't /api/* or a static asset serves index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

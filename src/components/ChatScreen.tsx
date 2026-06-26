@@ -33,7 +33,15 @@ function NudgeBar({ convo, pending }: { convo: Convo; pending: boolean }) {
   )
 }
 
-export function ChatScreen({ convo, onBack }: { convo: Convo; onBack: () => void }) {
+export function ChatScreen({
+  convo,
+  onBack,
+  onJump,
+}: {
+  convo: Convo
+  onBack: () => void
+  onJump: () => void
+}) {
   const messages = useMessages(convo.key)
   const responder = usePendingResponder(convo.key)
   const pending = responder !== undefined
@@ -88,6 +96,9 @@ export function ChatScreen({ convo, onBack }: { convo: Convo; onBack: () => void
               </div>
             </div>
           </div>
+          <button className="iconbtn" onClick={onJump} aria-label="Jump to chat" title="Jump">
+            ⇆
+          </button>
         </div>
       </div>
 

@@ -51,10 +51,12 @@ export function ConversationList({
   onOpen,
   onSettings,
   onNew,
+  onJump,
 }: {
   onOpen: (c: Convo) => void
   onSettings: () => void
   onNew: () => void
+  onJump: () => void
 }) {
   const convos = useConversations()
   useListSync()
@@ -68,6 +70,10 @@ export function ConversationList({
             ＋
           </button>
         </div>
+        <button className="search" onClick={onJump} aria-label="Search or jump to a chat">
+          🔍 <span>Search or jump to…</span>
+          <span className="kbd">⌘K</span>
+        </button>
       </div>
 
       <div className="rows">

@@ -920,3 +920,121 @@ button {
   font-size: 11px;
   cursor: pointer;
 }
+
+/* Search / jump bar in the list header (opens the quick-switcher) */
+.search {
+  width: 100%;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 10px 13px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+}
+.search:hover {
+  border-color: #463f54;
+}
+.search .kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--faint);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+/* Quick-switcher (⌘K) overlay */
+.scrim.center {
+  align-items: flex-start;
+  padding-top: 60px;
+  justify-content: center;
+}
+.qs {
+  width: 340px;
+  max-width: 90%;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  animation: pop 0.18s cubic-bezier(0.2, 0.7, 0.3, 1);
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.7);
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.qf {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--line);
+}
+.qs input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+.qs input::placeholder {
+  color: var(--faint);
+}
+.qlist {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.qrow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 11px;
+  cursor: pointer;
+}
+.qrow.sel {
+  background: var(--surface);
+}
+.qrow .nm {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 15px;
+}
+.qrow .k {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--faint);
+  white-space: pre;
+}
+.qempty {
+  padding: 18px;
+  text-align: center;
+  color: var(--faint);
+  font-size: 13px;
+}
+.qfoot {
+  display: flex;
+  gap: 14px;
+  padding: 9px 15px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--faint);
+}

@@ -10,3 +10,7 @@ docs/api-findings.md
 
 # Machine-local Claude Code settings (keep launch.json shared)
 .claude/settings.local.json
+
+# Internal planning docs (not part of the shipped app)
+companion-client-SPEC.md
+companion-client-prototype.html

@@ -15,9 +15,27 @@ export function Home({ onSignOut }: { onSignOut: () => void }) {
   const [newOpen, setNewOpen] = useState(false)
 
   useEffect(() => {
-    syncAll().catch(() => {
-      // Offline / key revoked: fall back to whatever Dexie already holds.
-    })
+    let lastSync = 0
+    const sync = (force = false) => {
+      if (!force && document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - lastSync < 10_000) return // throttle: at most once / 10s, no thrash on focus
+      lastSync = now
+      syncAll().catch(() => {
+        // Offline / key revoked: fall back to whatever Dexie already holds.
+      })
+    }
+    sync(true) // initial pull on mount
+    // Re-sync when the tab regains focus/visibility — refreshes the Nomi/room list
+    // (renames, new rooms). Cannot recover messages: the API has no history (V1).
+    const onFocus = () => sync()
+    const onVisible = () => sync()
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   // Tell the engine which conversation is on screen, so replies to others mark unread.

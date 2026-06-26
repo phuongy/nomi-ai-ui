@@ -3,9 +3,16 @@
 const MOCK = 'companion.mockMode'
 const SLOW = 'companion.slowReplies'
 
-// Mock mode is ON by default so the chat can be built/tested without sending real
-// messages or consuming quota. Flip to live in Settings.
-export const isMock = (): boolean => localStorage.getItem(MOCK) !== 'false'
+// Mock vs live responder. The DEFAULT is environment-based: local dev (`netlify
+// dev` / Vite) defaults to mock so the chat can be built/tested without sending
+// real messages or consuming quota; a production build defaults to the live API.
+// An explicit toggle in Settings overrides the default and persists per-device.
+export const isMock = (): boolean => {
+  const override = localStorage.getItem(MOCK)
+  if (override === 'true') return true
+  if (override === 'false') return false
+  return import.meta.env.DEV // unset → dev = mock, prod = live
+}
 export const setMock = (v: boolean): void => localStorage.setItem(MOCK, String(v))
 
 // Slow replies simulate the ~30s generation ceiling so the locked composer can be

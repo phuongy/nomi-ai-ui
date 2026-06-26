@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Convo } from '../lib/convos'
+import type { Room } from '../lib/db'
 import { useMessages, usePendingResponder, sendMessage, retryMessage, nudge } from '../lib/chatEngine'
-import { useRoomMembers } from '../lib/rooms'
+import { useRoomMembers, deleteRoom } from '../lib/rooms'
+import { NewSheet } from './NewSheet'
 import { relativeTime } from '../lib/format'
 import { CHAR_CAP, isMock } from '../lib/settings'
 import { Avatar, RoomAvatar } from './Avatar'
@@ -37,10 +39,12 @@ export function ChatScreen({
   convo,
   onBack,
   onJump,
+  onOpenRoom,
 }: {
   convo: Convo
   onBack: () => void
   onJump: () => void
+  onOpenRoom: (c: Convo) => void
 }) {
   const messages = useMessages(convo.key)
   const responder = usePendingResponder(convo.key)
@@ -49,6 +53,10 @@ export function ChatScreen({
   const [text, setText] = useState('')
   const taRef = useRef<HTMLTextAreaElement>(null)
   const threadRef = useRef<HTMLDivElement>(null)
+
+  // Room-only editor: ⋯ opens the registry form directly, which has Save +
+  // Delete at the bottom (both local-only, no API).
+  const [editing, setEditing] = useState(false)
 
   const over = text.length > CHAR_CAP
   const canSend = text.trim().length > 0 && !over && !pending
@@ -99,6 +107,16 @@ export function ChatScreen({
           <button className="iconbtn" onClick={onJump} aria-label="Jump to chat" title="Jump">
             ⇆
           </button>
+          {isRoom && (
+            <button
+              className="iconbtn"
+              onClick={() => setEditing(true)}
+              aria-label="Edit room"
+              title="Edit room"
+            >
+              ⋯
+            </button>
+          )}
         </div>
       </div>
 
@@ -196,6 +214,22 @@ export function ChatScreen({
           </button>
         </div>
       </div>
+
+      {editing && (
+        <NewSheet
+          editing={{ id: convo.id, name: convo.name, memberUuids: convo.members } satisfies Room}
+          onClose={() => setEditing(false)}
+          onOpenRoom={(c) => {
+            setEditing(false)
+            onOpenRoom(c)
+          }}
+          onDelete={async () => {
+            await deleteRoom(convo.id)
+            setEditing(false)
+            onBack()
+          }}
+        />
+      )}
     </section>
   )
 }

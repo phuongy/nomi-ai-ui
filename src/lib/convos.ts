@@ -36,6 +36,12 @@ export async function markRead(convoKey: string): Promise<void> {
   await setMeta(unreadKey(convoKey), 0)
 }
 
+// Drop a conversation's local activity/unread meta (used when a room is deleted
+// or its id is changed). Messages are removed separately by the caller.
+export async function forgetConvoMeta(convoKey: string): Promise<void> {
+  await db.meta.bulkDelete([activityKey(convoKey), unreadKey(convoKey)])
+}
+
 export function useConversations(): Convo[] | undefined {
   return useLiveQuery(async () => {
     const [nomis, rooms, messages, metas] = await Promise.all([

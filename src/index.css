@@ -693,6 +693,31 @@ button {
   cursor: default;
 }
 
+.cta.danger {
+  background: var(--danger);
+  color: #2a0e0e;
+}
+
+/* Edit-room footer: Save fills, Delete sits beside it */
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.form-actions .cta {
+  width: auto;
+  margin-top: 14px;
+}
+
+.form-actions .cta.save {
+  flex: 1;
+}
+
+.form-actions .cta.danger {
+  flex: 0 0 auto;
+  padding: 13px 18px;
+}
+
 /* --- Composer --- */
 .composer {
   flex: 0 0 auto;

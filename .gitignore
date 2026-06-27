@@ -8,8 +8,8 @@ dist
 *.local
 docs/api-findings.md
 
-# Machine-local Claude Code settings (keep launch.json shared)
-.claude/settings.local.json
+# Claude Code workspace settings (machine-local, not shared)
+.claude/
 
 # Internal planning docs (not part of the shipped app)
 companion-client-SPEC.md

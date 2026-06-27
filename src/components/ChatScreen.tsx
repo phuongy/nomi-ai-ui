@@ -35,6 +35,22 @@ function NudgeBar({ convo, pending }: { convo: Convo; pending: boolean }) {
   )
 }
 
+// Render *action* spans (roleplay emotes) in an italic, toned style so stage
+// directions read as distinct from speech. The asterisks are kept in the
+// rendered text — they're a familiar marker and reinforce the role at a glance.
+// Splits on paired single-asterisks; a lone, unpaired asterisk stays plain text.
+function renderBody(text: string) {
+  return text.split(/(\*[^*\n]+\*)/g).map((part, i) =>
+    part.length > 2 && part.startsWith('*') && part.endsWith('*') ? (
+      <em key={i} className="action">
+        {part}
+      </em>
+    ) : (
+      part
+    ),
+  )
+}
+
 // Recent-chat pills under the chat header: the 6 most-recent conversations as
 // tappable chips (avatar + name), the open one highlighted. An always-visible
 // complement to the ⇆ quick-switcher — faster for hopping between active chats,
@@ -101,6 +117,24 @@ export function ChatScreen({
     if (taRef.current) taRef.current.style.height = 'auto'
   }
 
+  // Wrap the current selection in *asterisks* (or insert an empty pair with the
+  // cursor between them) so actions are one tap on mobile — no keyboard switch
+  // to reach the * key. The rendered bubble styles *…* spans as faint italics.
+  function insertAction() {
+    const ta = taRef.current
+    const start = ta?.selectionStart ?? text.length
+    const end = ta?.selectionEnd ?? text.length
+    const inner = text.slice(start, end)
+    setText(text.slice(0, start) + '*' + inner + '*' + text.slice(end))
+    // Restore focus + caret after React commits the new value.
+    requestAnimationFrame(() => {
+      if (!ta) return
+      ta.focus()
+      const caret = inner ? end + 2 : start + 1
+      ta.setSelectionRange(caret, caret)
+    })
+  }
+
   const isRoom = convo.kind === 'room'
   const members = useRoomMembers(isRoom ? convo.members : [])
   const nameToUuid = useMemo(() => new Map(members.map((m) => [m.name, m.uuid])), [members])
@@ -154,7 +188,9 @@ export function ChatScreen({
           const me = m.from === 'user'
           const showWho = isRoom && !me && (i === 0 || messages[i - 1].from !== m.from)
           const bubble = (
-            <div className={`bubble${m.status === 'failed' ? ' failed' : ''}`}>{m.text}</div>
+            <div className={`bubble${m.status === 'failed' ? ' failed' : ''}`}>
+              {renderBody(m.text)}
+            </div>
           )
           const footer =
             m.status === 'failed' ? (
@@ -212,6 +248,17 @@ export function ChatScreen({
             ⓘ one message at a time · <b>cancels in 30s</b>
           </div>
         )}
+        <div className="tools">
+          <button
+            type="button"
+            className="tool"
+            onClick={insertAction}
+            aria-label="Insert action"
+            title="Insert action"
+          >
+            <span className="action">*action*</span>
+          </button>
+        </div>
         <div className="inwrap">
           <div className="field">
             <textarea

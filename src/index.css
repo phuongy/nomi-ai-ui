@@ -556,6 +556,20 @@ button {
   opacity: 0.55;
 }
 
+/* Roleplay *action* spans read as stage directions, distinct from speech:
+   italic everywhere, plus a muted tone on received bubbles where lighter = still
+   readable. On the bright accent (user) bubble, fading dark text just muddies it,
+   so we keep full-strength colour and let the italic carry the distinction. */
+.action {
+  font-style: italic;
+  color: var(--muted);
+  margin: 0 3px; /* breathing room so emotes don't crowd the surrounding speech */
+}
+
+.msg.me .action {
+  color: #45160a; /* deep espresso — strong contrast on the orange bubble; italic does the distinguishing */
+}
+
 .who-lbl {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -793,6 +807,38 @@ button {
 .hint b {
   color: var(--accent);
   font-weight: 500;
+}
+
+/* Formatting toolbar above the input. One action for now: wrap text in
+   *asterisks*. Sits flush above the field so it reads as part of the composer. */
+.tools {
+  display: flex;
+  gap: 8px;
+  padding: 0 2px 7px;
+}
+
+.tool {
+  border: 1px solid var(--line);
+  background: var(--bg2);
+  border-radius: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 13px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.tool:active {
+  transform: scale(0.96);
+}
+
+.tool:hover {
+  border-color: var(--accent-glow);
+}
+
+.tool .action {
+  font-family: var(--font-mono);
+  color: var(--muted);
 }
 
 .inwrap {

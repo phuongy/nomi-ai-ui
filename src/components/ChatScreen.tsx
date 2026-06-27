@@ -3,7 +3,10 @@ import { useConversations, type Convo } from '../lib/convos'
 import type { Room } from '../lib/db'
 import { useMessages, usePendingResponder, sendMessage, retryMessage, nudge } from '../lib/chatEngine'
 import { useRoomMembers, deleteRoom } from '../lib/rooms'
+import { getVoice } from '../lib/voices'
+import { toggle, usePlayingId } from '../lib/tts'
 import { NewSheet } from './NewSheet'
+import { NomiSheet } from './NomiSheet'
 import { relativeTime } from '../lib/format'
 import { CHAR_CAP, isMock } from '../lib/settings'
 import { Avatar, RoomAvatar } from './Avatar'
@@ -48,6 +51,33 @@ function renderBody(text: string) {
     ) : (
       part
     ),
+  )
+}
+
+// Play/stop a single bubble's TTS. The voice is the speaking Nomi's saved
+// preference (resolved at tap time so it can't go stale). Only the bubble whose
+// id is currently playing shows the stop glyph.
+function PlayButton({ id, text, uuid }: { id: string; text: string; uuid?: string }) {
+  const playingId = usePlayingId()
+  if (!uuid) return null
+  const on = playingId === id
+  return (
+    <button
+      className={`play${on ? ' on' : ''}`}
+      aria-label={on ? 'Pause' : 'Play message'}
+      onClick={() => void getVoice(uuid).then((v) => toggle(id, text, v))}
+    >
+      {on ? (
+        <svg viewBox="0 0 10 10" aria-hidden="true">
+          <rect x="2" y="1.5" width="2" height="7" rx="0.6" />
+          <rect x="6" y="1.5" width="2" height="7" rx="0.6" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M2.5 1.4 L8.3 5 L2.5 8.6 Z" />
+        </svg>
+      )}
+    </button>
   )
 }
 
@@ -100,6 +130,8 @@ export function ChatScreen({
   // Room-only editor: ⋯ opens the registry form directly, which has Save +
   // Delete at the bottom (both local-only, no API).
   const [editing, setEditing] = useState(false)
+  // 1:1-only: ♪ opens the per-Nomi voice picker.
+  const [voiceOpen, setVoiceOpen] = useState(false)
 
   const over = text.length > CHAR_CAP
   const canSend = text.trim().length > 0 && !over && !pending
@@ -168,7 +200,7 @@ export function ChatScreen({
           <button className="iconbtn" onClick={onJump} aria-label="Jump to chat" title="Jump">
             ⇆
           </button>
-          {isRoom && (
+          {isRoom ? (
             <button
               className="iconbtn"
               onClick={() => setEditing(true)}
@@ -176,6 +208,15 @@ export function ChatScreen({
               title="Edit room"
             >
               ⋯
+            </button>
+          ) : (
+            <button
+              className="iconbtn"
+              onClick={() => setVoiceOpen(true)}
+              aria-label="Voice"
+              title="Voice"
+            >
+              ♪
             </button>
           )}
         </div>
@@ -192,6 +233,7 @@ export function ChatScreen({
               {renderBody(m.text)}
             </div>
           )
+          const voiceUuid = isRoom ? nameToUuid.get(m.from) : convo.id
           const footer =
             m.status === 'failed' ? (
               <button className="retry" onClick={() => retryMessage(convo, m.clientId)}>
@@ -199,6 +241,16 @@ export function ChatScreen({
               </button>
             ) : (
               <span className="meta">{m.status === 'pending' ? 'sending…' : relativeTime(m.ts)}</span>
+            )
+          // Them-bubbles get a small play control beside them on the right.
+          const bubbleRow =
+            !me && m.status !== 'failed' ? (
+              <div className="bubble-row">
+                {bubble}
+                <PlayButton id={m.clientId} text={m.text} uuid={voiceUuid} />
+              </div>
+            ) : (
+              bubble
             )
 
           // Room messages from a member carry the member's avatar in a left gutter
@@ -211,7 +263,7 @@ export function ChatScreen({
                 </div>
                 <div className="msg-col">
                   {showWho && <span className="who-lbl">{m.from}</span>}
-                  {bubble}
+                  {bubbleRow}
                   {footer}
                 </div>
               </div>
@@ -219,7 +271,7 @@ export function ChatScreen({
           }
           return (
             <div key={m.clientId} className={`msg ${me ? 'me' : 'them'}`}>
-              {bubble}
+              {bubbleRow}
               {footer}
             </div>
           )
@@ -304,6 +356,10 @@ export function ChatScreen({
             onBack()
           }}
         />
+      )}
+
+      {voiceOpen && !isRoom && (
+        <NomiSheet uuid={convo.id} name={convo.name} onClose={() => setVoiceOpen(false)} />
       )}
     </section>
   )

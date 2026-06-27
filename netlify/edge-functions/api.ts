@@ -73,6 +73,92 @@ app.post('/api/rooms/:id/chat/request', async (c) =>
   relayJson(c.get('key'), `/rooms/${id(c)}/chat/request`, 'POST', await c.req.text()),
 )
 
+// --- Text-to-speech (Gemini) ---
+// Unlike the Nomi routes, this one does NOT forward the user's key upstream: it
+// calls Gemini with a server-side GEMINI_API_KEY. Gemini TTS returns raw PCM
+// (16-bit, mono, base64), so we wrap it in a WAV header and hand the client a
+// ready-to-play blob. The /api/* auth gate above still requires the Nomi key, so
+// only signed-in clients can spend the TTS budget.
+// Upgrade path: gemini-3.1-flash-tts-preview is newer (more expressive, audio
+// tags, streaming) but lives on the new Interactions API (POST /v1beta/interactions,
+// different body: input + response_format + speech_config[]). Switching means
+// rewriting the fetch + parse below; the client stays the same (still gets WAV).
+const TTS_MODEL = 'gemini-2.5-flash-preview-tts'
+
+app.post('/api/tts', async (c) => {
+  const apiKey = (globalThis as { Deno?: { env: { get(k: string): string | undefined } } }).Deno?.env.get(
+    'GEMINI_API_KEY',
+  )
+  if (!apiKey) return c.json({ error: { type: 'MissingGeminiKey' } }, 500)
+
+  const { text, voice } = (await c.req.json()) as { text?: string; voice?: string }
+  if (!text) return c.json({ error: { type: 'EmptyText' } }, 400)
+
+  const upstream = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text }] }],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: voice || 'Kore' } },
+          },
+        },
+      }),
+    },
+  )
+  if (!upstream.ok) return new Response(await upstream.text(), { status: upstream.status })
+
+  const data = await upstream.json()
+  const inline = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData
+  if (!inline?.data) return c.json({ error: { type: 'NoAudio' } }, 502)
+
+  const pcm = base64ToBytes(inline.data)
+  const rate = Number(/rate=(\d+)/.exec(inline.mimeType ?? '')?.[1] ?? 24000)
+  return new Response(pcmToWav(pcm, rate), {
+    status: 200,
+    headers: { 'Content-Type': 'audio/wav', 'Cache-Control': 'public, max-age=86400' },
+  })
+})
+
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64)
+  const out = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+  return out
+}
+
+// Prepend a 44-byte PCM WAV header (16-bit mono) so an <audio> element can play
+// Gemini's raw little-endian PCM.
+function pcmToWav(pcm: Uint8Array, sampleRate: number): Uint8Array {
+  const bytesPerSample = 2
+  const blockAlign = bytesPerSample // mono
+  const byteRate = sampleRate * blockAlign
+  const buf = new ArrayBuffer(44 + pcm.length)
+  const view = new DataView(buf)
+  const ascii = (offset: string, at: number) => {
+    for (let i = 0; i < offset.length; i++) view.setUint8(at + i, offset.charCodeAt(i))
+  }
+  ascii('RIFF', 0)
+  view.setUint32(4, 36 + pcm.length, true)
+  ascii('WAVE', 8)
+  ascii('fmt ', 12)
+  view.setUint32(16, 16, true) // PCM chunk size
+  view.setUint16(20, 1, true) // PCM format
+  view.setUint16(22, 1, true) // channels = mono
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, byteRate, true)
+  view.setUint16(32, blockAlign, true)
+  view.setUint16(34, 16, true) // bits per sample
+  ascii('data', 36)
+  view.setUint32(40, pcm.length, true)
+  new Uint8Array(buf, 44).set(pcm)
+  return new Uint8Array(buf)
+}
+
 export default (request: Request) => app.fetch(request)
 
 // Rate-limit backstop against client loop bugs (SPEC §7.1). Code-based rule,

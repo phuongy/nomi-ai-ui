@@ -38,6 +38,10 @@ export type Message = {
 
 export type Asset = { key: string; blob: Blob } // key = `avatar:<uuid>`
 export type Meta = { key: string; value: unknown } // lastActivityAt, unread, settings
+// Cached TTS audio, keyed by hash(voice + text) so identical lines never
+// regenerate (the local-first analog of Nomi's "generate once, replay from
+// storage"). Only the live Gemini path writes here; mock uses speechSynthesis.
+export type Audio = { key: string; blob: Blob; ts: number }
 
 class CompanionDB extends Dexie {
   nomis!: Table<Nomi, string>
@@ -45,6 +49,7 @@ class CompanionDB extends Dexie {
   messages!: Table<Message, string>
   assets!: Table<Asset, string>
   meta!: Table<Meta, string>
+  audio!: Table<Audio, string>
 
   constructor() {
     super('companion')
@@ -55,6 +60,9 @@ class CompanionDB extends Dexie {
       assets: 'key',
       meta: 'key',
     })
+    // v2: TTS audio cache. Per-Nomi voice prefs live in `meta` (key `voice:<uuid>`)
+    // so they survive nomi list re-syncs, which bulkPut over the nomis table.
+    this.version(2).stores({ audio: 'key' })
   }
 }
 
